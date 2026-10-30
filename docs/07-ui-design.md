@@ -1,6 +1,24 @@
 # 7. UI Design
 
-Source: Project Proposal, Section 8. Prototypes were designed in Figma and will be built with React.js and Bootstrap. The prototype's working name is **FileAI — "Organize smarter with AI"**.
+Source: Project Proposal, Section 8. Prototypes were designed in Figma and are now built with React.js and Bootstrap in [`frontend/`](../frontend/README.md). The app is called **FileAI — "Organize smarter with AI"**.
+
+## Implemented screens (v0.1)
+
+Screenshots from the running app (real backend and MySQL, demo account):
+
+| Dashboard | AI analysis and review |
+|---|---|
+| ![Dashboard](images/app-dashboard.jpg) | ![AI review](images/app-review.jpg) |
+| **Natural-language search** | **Upload queue** |
+| ![Search](images/app-search.jpg) | ![Upload](images/app-upload.jpg) |
+
+Additions beyond the prototype:
+
+- **Review Queue** page (`/review`) listing documents awaiting review, failed and still processing, with a count badge in the sidebar.
+- **Documents**, **All Folders** and **Categories** pages for browsing.
+- Duplicate and invalid-file handling directly in the upload queue ("Upload anyway" / "Cancel").
+- Confidence ring and similar-document warning on the review page; "Retry processing" for failed files.
+- The prototype's "Pro Plan / Upgrade Storage" elements were left out (not in scope); the sidebar shows storage used against the quota instead.
 
 ## 7.1 Design principles
 

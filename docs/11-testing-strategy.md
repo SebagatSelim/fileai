@@ -65,6 +65,52 @@ Re-run after any change to prompts, models or ranking weights and record the res
 - **Entry (per sprint test cycle):** features merged into `develop`, test data seeded, environment running.
 - **Exit (final release):** all *Must* requirements pass; no open critical or high-severity bugs; NFR targets met or deviations documented with reasons.
 
-## 11.6 Defect tracking
+## 11.6 Results so far (implementation v0.1)
+
+### Automated backend tests
+
+Run with `cd backend && pytest --cov=app` (in-memory SQLite, no MySQL needed).
+
+| File | Covers | Tests |
+|---|---|---|
+| `tests/test_auth.py` | TC-AUTH: registration rules, duplicate email, BCrypt storage, login, same error for unknown email / wrong password, lockout, token checks, password change | 20 |
+| `tests/test_documents.py` | TC-UPL, TC-EXT, TC-AI, TC-DUP: upload, PDF/DOCX/TXT extraction, wrong type, fake extension, empty/corrupted, size limit, exact + similar duplicates, approve, folder reuse, move/edit, download links, delete, list filters, no-OCR path, reprocess | 19 |
+| `tests/test_search_and_security.py` | TC-SRCH, TC-SEC: 7 natural-language queries return the right document first, empty results, per-user isolation on every endpoint, auth required everywhere | 20 |
+| `tests/test_ai_and_dashboard.py` | AI evaluation on 9 sample documents, proposal examples, text helpers, dashboard, profile, folders, demo seed | 18 |
+| `tests/test_openai_provider.py` | OpenAI output validation, retries and fallback (fake client, no network) | 3 |
+
+**80 passed · backend coverage 86%** (target ≥ 70%).
+
+### Automated frontend tests
+
+Run with `cd frontend && npm run test:run` (Vitest + React Testing Library + jsdom): **85 passed in 9 files** — API client and session handling, protected routes, login and registration forms (validation, password checklist), tag input, and the formatting, file-type, folder and validation helpers.
+
+### Manual end-to-end check in the browser
+
+The React app was run against the real Flask API and MySQL and walked through by hand: login, dashboard, review queue, AI review with similar-file warning, approve, document details with text and PDF preview, natural-language search, upload with progress, duplicate prompt ("Upload anyway / Cancel"), rejected `.exe` file, discard upload, folders, categories, settings, and the mobile layout (375 px). Bugs found and fixed: folder breadcrumb overlapping, PDF viewer showing the link token instead of the filename, and the special-character password rule differing between frontend and backend.
+
+### AI evaluation (local analyser, 9 sample documents in `backend/app/demo.py`)
+
+| Measure | Target | Result |
+|---|---|---|
+| Category accuracy | ≥ 80% | **9 / 9 (100%)** |
+| Search: correct file in top 1 | ≥ 80% of queries | **7 / 7 (100%)** |
+| Similar-document detection | Edited copy flagged, unrelated not | Edited copy flagged at 0.975 similarity; unrelated documents not flagged |
+| Proposal examples (FR-04, FR-05) | — | `scan001.pdf` → "Network Technologies Assignment Report" with IPv6, Routing, OSPF; `document123.pdf` → `Semester1_Database_Systems_Assignment.pdf` in `University/Year 2/Semester 1/Database Systems` |
+
+The sample set is small and written by the team, so these numbers show the pipeline works end to end; a larger set of real (non-sensitive) documents should be used for the final evaluation.
+
+### End-to-end check on MySQL 8.4 (background processing on)
+
+| NFR-01 target | Measured |
+|---|---|
+| Upload confirmation ≤ 3 s | 93 ms |
+| AI processing ≤ 30 s | ≈ 0.5 s (text document) |
+| Search ≤ 2 s | 20–60 ms |
+| Dashboard | 22 ms |
+
+Not yet measured: 50 concurrent users (Locust), OCR accuracy (Tesseract not installed on the test machine), usability sessions, cross-browser checklist.
+
+## 11.7 Defect tracking
 
 Bugs are logged as GitHub Issues with: steps to reproduce, expected vs actual result, screenshot, severity (Critical / High / Medium / Low), and the related FR or UC.
