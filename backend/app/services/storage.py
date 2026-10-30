@@ -35,9 +35,12 @@ class LocalStorage:
         return self._path(key)
 
     def download_url(self, key: str, filename: str, mime_type: str, inline: bool, expires: int) -> str:
-        """Signed, short-lived link served by /api/files/<token> (no auth header needed)."""
+        """Signed, short-lived link served by /api/files/<token>/<filename> (no auth header needed).
+
+        The filename at the end is only cosmetic (browsers' PDF viewers show it as the title).
+        """
         token = _serializer().dumps({"k": key, "f": filename, "m": mime_type, "i": inline})
-        return url_for("files.serve_file", token=token)
+        return url_for("files.serve_file_named", token=token, filename=filename)
 
 
 class S3Storage:

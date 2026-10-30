@@ -130,7 +130,8 @@ def _clean_line(line: str) -> str:
 
 _UNIT_CODE = r"[A-Z]{3,4}\s?\d{3,4}"
 _AIRLINE = re.compile(r"\b([A-Z][A-Za-z]+ (?:Airlines|Airways|Air))\b")
-_AMOUNT = re.compile(r"(?i)\b(?:total(?: amount)?(?: due)?|amount due|balance due)\b[^\d$\n]*\$?\s?([\d,]+\.\d{2})")
+_AMOUNT = re.compile(
+    r"(?i)\b(?:total(?: amount)?(?: due)?|amount due|balance due|net pay|amount paid)\b[^\d$\n]*\$?\s?([\d,]+\.\d{2})")
 _DATE = r"\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{4}"
 
 

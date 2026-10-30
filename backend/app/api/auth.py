@@ -35,7 +35,7 @@ def password_problems(password: str) -> list[str]:
         problems.append("a lowercase letter")
     if not re.search(r"\d", password):
         problems.append("a number")
-    if not re.search(r"[^A-Za-z0-9]", password):
+    if not re.search(r"[^A-Za-z0-9\s]", password):  # spaces don't count as special characters
         problems.append("a special character")
     if len(password.encode("utf-8")) > 72:
         problems.append("no more than 72 bytes (BCrypt limit)")

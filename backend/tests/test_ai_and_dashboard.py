@@ -35,6 +35,15 @@ def test_proposal_examples():
     assert result.suggested_folder_path == ["University", "Year 2", "Semester 1", "Database Systems"]
 
 
+def test_payslip_summary_names_employer_and_amount():
+    text = ("Western Health Services\nPAYSLIP - Pay advice\nEmployee: Alex Chen\nGross pay $1,850.00\n"
+            "Net pay $1,540.00\nPayment date: 16 October 2026. Salary paid into bank account ending 4821.")
+    result = analyzer.analyze(text, "payslip_oct.txt", [], ".txt")
+    assert (result.category, result.document_type) == ("Finance", "Payslip")
+    assert result.suggested_folder_path == ["Finance", "Payslips", "2026"]
+    assert result.summary.startswith("Payslip from Western Health Services for $1,540.00")
+
+
 def test_too_little_text_is_uncategorised():
     result = analyzer.analyze("IMG 0042", "IMG_0042.jpg", [], ".jpg")
     assert result.category == "Uncategorised" and result.confidence < 0.6

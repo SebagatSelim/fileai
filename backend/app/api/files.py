@@ -7,6 +7,11 @@ from ..services.storage import LocalStorage, get_storage, read_download_token
 bp = Blueprint("files", __name__)
 
 
+@bp.get("/files/<token>/<path:filename>")
+def serve_file_named(token: str, filename: str):
+    return serve_file(token)
+
+
 @bp.get("/files/<token>")
 def serve_file(token: str):
     storage = get_storage()

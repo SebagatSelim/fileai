@@ -23,6 +23,7 @@ def test_password_is_stored_as_bcrypt_hash(client, app):
     ("PASSW0RD!", "lowercase"),
     ("Password!", "number"),
     ("Passw0rd1", "special"),
+    ("Passw0rd 1", "special"),  # a space is not a special character
 ])
 def test_register_rejects_weak_passwords(client, password, rule):
     res = register(client, password=password)
