@@ -2,6 +2,8 @@
 
 Project documentation for the **AI-Powered Personal Digital File Organizer** (Group 4, NIT3003/NIT3004, Victoria University).
 
+To install and run the app, see the **[Student Guide](../STUDENT_GUIDE.md)**.
+
 | # | Document | What's in it |
 |---|---|---|
 | 1 | [Project Overview](01-project-overview.md) | Problem, market, competitors, gap, aim, SMART objectives, scope |

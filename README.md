@@ -4,6 +4,8 @@
 
 **NIT3003 / NIT3004 IT Capstone Project — Group 4, Victoria University**
 
+> 👉 **New to the project? Start with the [Student Guide](STUDENT_GUIDE.md)** — what to install, how to run the app step by step, a demo script for the presentation, and fixes for common errors.
+
 | | |
 |---|---|
 | **Status** | ✅ Proposal and presentation (NIT3003) · ✅ Working application v0.1 — all core features implemented and tested |
@@ -70,6 +72,7 @@ Details: [System Architecture](docs/04-system-architecture.md) · [Database Desi
 ```text
 .
 ├── README.md                  ← you are here
+├── STUDENT_GUIDE.md           ← step-by-step guide: install, run, demo, troubleshooting
 ├── setup.bat                  ← one-time setup on Windows
 ├── start-dev.bat              ← start backend + frontend on Windows
 ├── CONTRIBUTING.md            ← Git workflow, branches, commits, PRs
