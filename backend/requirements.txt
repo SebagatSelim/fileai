@@ -1,0 +1,31 @@
+# Web framework
+Flask>=3.1,<4
+Flask-Cors>=5.0,<7
+python-dotenv>=1.0,<2
+
+# Auth
+Flask-JWT-Extended>=4.7,<5
+bcrypt>=4.2,<6
+
+# Database
+Flask-SQLAlchemy>=3.1,<4
+SQLAlchemy>=2.0,<3
+PyMySQL>=1.1,<2
+cryptography>=43            # needed by PyMySQL for MySQL 8 authentication
+
+# Cloud storage (only used when STORAGE_BACKEND=s3)
+boto3>=1.35,<2
+
+# Document processing
+PyMuPDF>=1.25,<2
+python-docx>=1.1,<2
+pytesseract>=0.3.13,<0.4    # also needs the Tesseract program installed
+Pillow>=11,<13
+
+# AI / NLP
+numpy>=2.1,<3
+openai>=1.58,<3             # only used when AI_PROVIDER=openai or EMBEDDING_PROVIDER=openai
+
+# Testing
+pytest>=8.3,<10
+pytest-cov>=6,<8
