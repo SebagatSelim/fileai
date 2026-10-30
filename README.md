@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| **Status** | ✅ Phase 1 (proposal) and Phase 2 (presentation) complete · ⏳ Phase 3 (implementation, NIT3004) next |
+| **Status** | ✅ Proposal and presentation (NIT3003) · ✅ Working application v0.1 — all core features implemented and tested |
 | **Stack** | React.js · Bootstrap · Python Flask · MySQL · AWS S3 · Tesseract OCR · PyMuPDF · python-docx · OpenAI GPT / Hugging Face |
 | **Docs** | [`docs/`](docs/README.md) |
 
@@ -30,6 +30,14 @@ Upload a file and the system does the organising:
 ```text
 Upload ─► Validate ─► Extract / OCR ─► AI analysis ─► Metadata ─► Duplicate check ─► Review ─► Store ─► Search
 ```
+
+## Screenshots
+
+| Dashboard | AI review (similar file warning) |
+|---|---|
+| ![Dashboard](docs/images/app-dashboard.jpg) | ![AI review](docs/images/app-review.jpg) |
+| **Natural-language search** | **Upload queue (duplicate + invalid file)** |
+| ![Search](docs/images/app-search.jpg) | ![Upload](docs/images/app-upload.jpg) |
 
 ## Key features
 
@@ -62,6 +70,8 @@ Details: [System Architecture](docs/04-system-architecture.md) · [Database Desi
 ```text
 .
 ├── README.md                  ← you are here
+├── setup.bat                  ← one-time setup on Windows
+├── start-dev.bat              ← start backend + frontend on Windows
 ├── CONTRIBUTING.md            ← Git workflow, branches, commits, PRs
 ├── CHANGELOG.md
 ├── docs/                      ← all project documentation
@@ -78,8 +88,12 @@ Details: [System Architecture](docs/04-system-architecture.md) · [Database Desi
 │   ├── 11-testing-strategy.md
 │   ├── 12-references.md
 │   └── images/
-├── frontend/                  ← React app (Phase 3)
-├── backend/                   ← Flask API (Phase 3)
+├── frontend/                  ← React + Vite + Bootstrap web app
+│   └── src/                   ← pages, components, API client
+├── backend/                   ← Flask REST API
+│   ├── app/                   ← API, AI pipeline, models, services
+│   ├── tests/                 ← pytest suite (80 tests)
+│   ├── requirements.txt
 │   └── .env.example
 ├── database/
 │   └── schema.sql             ← MySQL schema
@@ -96,26 +110,68 @@ Details: [System Architecture](docs/04-system-architecture.md) · [Database Desi
 | [Use Cases](docs/03-use-cases.md) | UC-01 to UC-10 |
 | [System Architecture](docs/04-system-architecture.md) | Layers, pipeline, sequence diagrams, security |
 | [Database Design](docs/05-database-design.md) | ER diagram and tables |
-| [API Specification](docs/06-api-specification.md) | REST endpoints (draft) |
+| [API Specification](docs/06-api-specification.md) | All REST endpoints with examples |
 | [UI Design](docs/07-ui-design.md) | Screens and prototype screenshots |
 | [Algorithms and Pseudocode](docs/08-algorithms-pseudocode.md) | Core procedures |
 | [Project Plan](docs/09-project-plan.md) | Team, milestones, Gantt, sprints |
 | [Risk Management](docs/10-risk-management.md) | Risk register |
-| [Testing Strategy](docs/11-testing-strategy.md) | How every requirement will be tested |
+| [Testing Strategy](docs/11-testing-strategy.md) | Test plan and current results |
 | [References](docs/12-references.md) | APA 7th |
 
 ## Getting started
 
-The application code starts in Phase 3. Until then, you can set up the database:
+You need **Python 3.11+**, **Node.js 20+** and **MySQL 8** (Laragon or XAMPP is fine). No API keys are needed: the built-in AI analyser runs offline.
+
+### Quick start on Windows
+
+1. Start MySQL (e.g. *Start All* in Laragon).
+2. Double-click **`setup.bat`** once — installs everything, creates the database and a demo account.
+3. Double-click **`start-dev.bat`** — starts both servers and opens <http://localhost:5173>.
+4. Sign in with **demo@fileai.test** / **Demo@12345**.
+
+### Manual setup
+
+**1. Start MySQL** (e.g. *Start All* in Laragon).
+
+**2. Backend** (first terminal):
 
 ```bash
-mysql -u root -p < database/schema.sql
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+flask --app run.py init-db
+flask --app run.py seed-demo
+flask --app run.py run --port 5000
 ```
 
-Planned setup for each part:
+On macOS use `source .venv/bin/activate` and `cp .env.example .env`. If your MySQL user has a password, edit `DATABASE_URL` in `backend/.env`.
 
-- [Backend setup](backend/README.md) — Python 3.11+, Flask, Tesseract OCR
-- [Frontend setup](frontend/README.md) — Node.js 20+, React, Vite
+**3. Frontend** (second terminal):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**4. Open <http://localhost:5173>** and sign in with the demo account **demo@fileai.test** / **Demo@12345**, or register a new account.
+
+Optional extras:
+
+- **OCR for scans and photos:** install [Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) and set `TESSERACT_CMD` in `backend/.env`.
+- **OpenAI GPT analysis:** set `AI_PROVIDER=openai` and `OPENAI_API_KEY` in `backend/.env`.
+- **AWS S3 storage:** set `STORAGE_BACKEND=s3`, `S3_BUCKET_NAME` and AWS credentials.
+
+Details: [Backend README](backend/README.md) · [Frontend README](frontend/README.md)
+
+## Running the tests
+
+```bash
+cd backend && pytest --cov=app        # 80 tests, ~86% coverage, no MySQL needed
+cd frontend && npm run test:run       # 85 component and helper tests (Vitest)
+```
 
 ## Project timeline
 
@@ -123,8 +179,8 @@ Planned setup for each part:
 |---|---|---|
 | M1 | Project proposal completed (NIT3003) | ✅ |
 | M2 | Oral presentation (NIT3003) | ✅ |
-| M3 | 80% system completion checkpoint (NIT3004) | ⏳ |
-| M4 | Final submission and demonstration (NIT3004) | ⏳ |
+| M3 | 80% system completion checkpoint (NIT3004) | ⏳ Core features already implemented (v0.1) |
+| M4 | Final submission and demonstration (NIT3004) | ⏳ Testing with real users, OCR, polish |
 
 See the [Project Plan](docs/09-project-plan.md) for the Gantt chart and sprint plan.
 

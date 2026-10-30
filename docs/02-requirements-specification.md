@@ -175,20 +175,20 @@ Also: easy navigation, drag-and-drop upload, clear display of AI suggestions, ed
 
 ## 2.4 Traceability matrix
 
-How each requirement links to use cases, design and tests. Keep this table updated as features are built.
+How each requirement links to use cases, design, code and tests. Keep this table updated as features change.
 
-| Requirement | Use case(s) | UI screen | API endpoint(s) | Test ref |
-|---|---|---|---|---|
-| FR-01 | UC-01, UC-02 | Login, Registration | `/api/auth/*` | TC-AUTH |
-| FR-02 | UC-03 | Upload | `POST /api/documents` | TC-UPL |
-| FR-03 | UC-05 | AI Analysis | `GET /api/documents/{id}/analysis` | TC-AI |
-| FR-04 | UC-06 | AI Analysis | `GET /api/documents/{id}/analysis` | TC-AI |
-| FR-05 | UC-08 | AI Analysis | `POST /api/documents/{id}/approve` | TC-AI |
-| FR-06 | UC-09 | Search | `POST /api/search` | TC-SRCH |
-| FR-07 | UC-07 | AI Analysis | `GET /api/documents/{id}/analysis` | TC-DUP |
-| FR-08 | UC-03, UC-04 | Upload | `POST /api/documents` | TC-UPL |
-| FR-09 | UC-04 | — | (internal pipeline) | TC-EXT |
-| FR-10 | UC-05, UC-06, UC-08 | AI Analysis | (internal pipeline) | TC-AI |
-| FR-11 | UC-02, UC-10 | Document Details | all protected endpoints | TC-SEC |
+| Requirement | Use case(s) | UI screen | API endpoint(s) | Backend code | Tests | Status |
+|---|---|---|---|---|---|---|
+| FR-01 | UC-01, UC-02 | Login, Registration | `/api/auth/*` | `api/auth.py` | `test_auth.py` | ✅ |
+| FR-02 | UC-03 | Upload | `POST /api/documents` | `api/documents.py` | `test_documents.py` | ✅ |
+| FR-03 | UC-05 | AI Analysis | `GET /api/documents/{id}/analysis` | `services/ai/` | `test_ai_and_dashboard.py` | ✅ |
+| FR-04 | UC-06 | AI Analysis | `GET /api/documents/{id}/analysis` | `services/ai/`, `services/text.py` | `test_ai_and_dashboard.py` | ✅ |
+| FR-05 | UC-08 | AI Analysis | `POST /api/documents/{id}/approve` | `services/ai/local.py`, `services/folders.py` | `test_documents.py` | ✅ |
+| FR-06 | UC-09 | Search | `POST /api/search` | `services/search.py`, `services/index.py` | `test_search_and_security.py` | ✅ |
+| FR-07 | UC-07 | AI Analysis | `POST /api/documents`, `GET …/analysis` | `services/pipeline.py`, `services/search.py` | `test_documents.py` | ✅ |
+| FR-08 | UC-03, UC-04 | Upload | `POST /api/documents` | `services/validation.py` | `test_documents.py` | ✅ |
+| FR-09 | UC-04 | — | (pipeline) | `services/extraction.py` | `test_documents.py` | ✅ PDF/DOCX/TXT · OCR needs Tesseract installed |
+| FR-10 | UC-05, UC-06, UC-08 | AI Analysis | (pipeline) | `services/pipeline.py`, `services/ai/` | `test_openai_provider.py` | ✅ |
+| FR-11 | UC-02, UC-10 | Document Details | all protected endpoints | `api/helpers.py`, `services/storage.py` | `test_search_and_security.py` | ✅ (HTTPS is set up at deployment) |
 
-Test references are defined in [Testing Strategy](11-testing-strategy.md).
+Test references (TC-AUTH, TC-UPL, …) are defined in [Testing Strategy](11-testing-strategy.md).

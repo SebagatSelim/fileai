@@ -29,6 +29,7 @@ erDiagram
     FOLDERS ||--o{ FOLDERS : contains
     FOLDERS |o--o{ FILES : holds
     FILES ||--|| DOCUMENT_METADATA : has
+    FILES |o--o{ DOCUMENT_METADATA : duplicate_of
     FILES ||--o{ DOCUMENT_KEYWORDS : tagged_with
     FILES ||--o| DOCUMENT_EMBEDDINGS : has
     FILES |o--o{ AUDIT_LOGS : referenced_by
@@ -71,11 +72,15 @@ erDiagram
         varchar suggested_folder_path
         decimal classification_confidence
         mediumtext extracted_text
+        int duplicate_of_file_id FK
+        enum duplicate_type
+        decimal duplicate_score
         boolean is_user_approved
     }
     DOCUMENT_KEYWORDS {
         int file_id PK, FK
         varchar keyword PK
+        smallint position
     }
     DOCUMENT_EMBEDDINGS {
         int file_id PK, FK
@@ -142,8 +147,11 @@ erDiagram
 | `ai_model` | VARCHAR(100) | Which model produced it | |
 | `is_user_approved` | BOOLEAN | FR-05 approval | true |
 | `approved_at` | DATETIME, null | | |
+| `duplicate_of_file_id` | INT, FK → files, null | Closest existing copy found when the file was processed | 233 |
+| `duplicate_type` | ENUM, null | EXACT (same SHA-256) or SIMILAR (embedding similarity ≥ threshold) | SIMILAR |
+| `duplicate_score` | DECIMAL(5,4), null | 1.0 for EXACT, cosine similarity for SIMILAR | 0.9754 |
 
-A `FULLTEXT` index on `(title, summary, extracted_text)` supports the keyword part of search.
+The keyword part of search is computed in Python (see [Architecture §4.5](04-system-architecture.md#45-search-design)), so no `FULLTEXT` index is needed.
 
 ### `folders`
 
@@ -154,7 +162,7 @@ A `FULLTEXT` index on `(title, summary, extracted_text)` supports the keyword pa
 | `parent_folder_id` | INT, FK → folders, null | `NULL` = top level |
 | `name` | VARCHAR(150) | e.g. `Year 2` |
 
-Folder names are unique among siblings. MySQL treats `NULL` values as distinct in unique keys, so the backend must also check for duplicate **top-level** folder names.
+Folder names are unique among siblings. MySQL treats `NULL` values as distinct in unique keys, so the backend also checks for duplicate **top-level** folder names (case-insensitive) before creating one.
 
 ### `document_keywords`
 
@@ -162,8 +170,9 @@ Folder names are unique among siblings. MySQL treats `NULL` values as distinct i
 |---|---|---|
 | `file_id` | INT, FK → files | |
 | `keyword` | VARCHAR(100) | e.g. `IPv6` |
+| `position` | SMALLINT | Keeps the order the AI or user gave the keywords |
 
-Primary key is `(file_id, keyword)`.
+Primary key is `(file_id, keyword)`. Keywords are de-duplicated case-insensitively.
 
 ### `document_embeddings`
 
@@ -171,7 +180,7 @@ Primary key is `(file_id, keyword)`.
 |---|---|---|
 | `file_id` | INT, PK + FK → files | |
 | `model_name` | VARCHAR(150) | e.g. `all-MiniLM-L6-v2` — re-embed if the model changes |
-| `dimensions` | SMALLINT | e.g. 384 |
+| `dimensions` | SMALLINT | 512 for the default local embeddings, 384 for MiniLM, 1536 for OpenAI |
 | `embedding` | JSON | Array of floats |
 
 MySQL 8 has no vector type, so similarity is computed in Python. If the project later moves to MySQL 9 (`VECTOR` type) or a vector database, only this table and the search service change (NFR-05).

@@ -89,22 +89,26 @@ CREATE TABLE document_metadata (
   extracted_text          MEDIUMTEXT     NULL,         -- output of PyMuPDF / python-docx / Tesseract
   extraction_method       ENUM('PYMUPDF','PYTHON_DOCX','TESSERACT_OCR','PLAIN_TEXT') NULL,
   ai_model                VARCHAR(100)   NULL,         -- which model produced the suggestions
+  duplicate_of_file_id    INT UNSIGNED   NULL,         -- closest existing copy found at upload (FR-07)
+  duplicate_type          ENUM('EXACT','SIMILAR') NULL,
+  duplicate_score         DECIMAL(5,4)   NULL,         -- 1.0 for EXACT, cosine similarity for SIMILAR
   is_user_approved        BOOLEAN        NOT NULL DEFAULT FALSE,
   approved_at             DATETIME       NULL,
   created_at              DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at              DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (file_id),
   KEY idx_metadata_category (category),
-  FULLTEXT KEY ftx_metadata_text (title, summary, extracted_text),   -- keyword fallback for search
-  CONSTRAINT fk_metadata_file FOREIGN KEY (file_id) REFERENCES files (file_id) ON DELETE CASCADE
+  CONSTRAINT fk_metadata_file      FOREIGN KEY (file_id)              REFERENCES files (file_id) ON DELETE CASCADE,
+  CONSTRAINT fk_metadata_duplicate FOREIGN KEY (duplicate_of_file_id) REFERENCES files (file_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
 -- document_keywords  (FR-04) — one row per keyword, so search can filter on them
 -- ---------------------------------------------------------------------
 CREATE TABLE document_keywords (
-  file_id   INT UNSIGNED NOT NULL,
-  keyword   VARCHAR(100) NOT NULL,
+  file_id   INT UNSIGNED      NOT NULL,
+  keyword   VARCHAR(100)      NOT NULL,
+  position  SMALLINT UNSIGNED NOT NULL DEFAULT 0,       -- keeps the AI's / user's keyword order
   PRIMARY KEY (file_id, keyword),
   KEY idx_keywords_keyword (keyword),
   CONSTRAINT fk_keywords_file FOREIGN KEY (file_id) REFERENCES files (file_id) ON DELETE CASCADE
