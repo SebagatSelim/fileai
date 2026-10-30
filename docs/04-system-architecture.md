@@ -1,6 +1,6 @@
 # 4. System Architecture
 
-Source: Project Proposal, Sections 2.4, 5 and 6, plus implementation detail added for Phase 3. Anything marked **(proposed)** is a design decision added in this document and should be confirmed by the team — see [§4.8 Decisions to confirm](#48-decisions-to-confirm).
+Source: Project Proposal, Sections 2.4, 5 and 6, plus the design as implemented in `backend/` and `frontend/`. Choices the proposal left open are listed in [§4.8 Technical decisions](#48-technical-decisions).
 
 ## 4.1 Overview
 
@@ -83,7 +83,7 @@ flowchart LR
 
 ## 4.4 Document processing pipeline
 
-The upload request returns quickly (NFR-01: confirmation ≤ 3 s). The slow work — OCR and AI — runs in the background **(proposed)** and the front end polls for the result.
+The upload request returns quickly (NFR-01: confirmation ≤ 3 s). The slow work — OCR and AI — runs in a background thread pool (`backend/app/services/pipeline.py`) and the front end polls for the result.
 
 ```mermaid
 flowchart TD
@@ -118,25 +118,37 @@ Design notes:
 - **Scanned PDFs.** If a PDF page returns almost no text from PyMuPDF, render that page to an image and run Tesseract on it.
 - **Text sent to the AI is truncated** to a fixed budget (e.g. the first few thousand words) so 20-page documents stay within the 30 s target (NFR-01) and API cost stays low.
 - **The user's existing folder list is sent with the prompt**, so the AI reuses folders such as `University/Year 2` instead of inventing new names each time.
-- **AI output is validated** against a fixed JSON shape. Invalid output is retried once, then the document falls back to `Uncategorised` for the user to fill in (UC-05 alternative flow).
-- **Error recovery (NFR-04).** AI calls retry up to 3 times with back-off. On start-up the worker re-queues any file left in `PROCESSING` for longer than a few minutes.
-- **Storage key vs filename.** S3 objects are stored under an ID-based key (`users/{user_id}/{uuid}`). Renaming a file only changes `generated_name` in MySQL; the download uses that name. No S3 copy is needed.
+- **AI output is validated** against a fixed JSON shape. Invalid output is retried, then the built-in local analyser takes over (`ai_model = local-fallback`); if there is too little text the document is marked `Uncategorised` for the user to fill in (UC-05 alternative flow).
+- **Error recovery (NFR-04).** AI calls retry up to 3 times with back-off. After a restart, the first request re-queues any file left in `PROCESSING`; polling `GET /analysis` also restarts a document that has been stuck for more than `STUCK_JOB_SECONDS` (60 s).
+- **Storage key vs filename.** Files are stored under an ID-based key (`users/{user_id}/{uuid}.ext`). Renaming a file only changes `generated_name` in MySQL; the download uses that name. No copy is needed.
 
-## 4.5 Search design (proposed)
+### AI providers (implemented)
+
+| Provider | Setting | Needs | What it does |
+|---|---|---|---|
+| **Local analyser** (default) | `AI_PROVIDER=local` | Nothing | Weighted keyword rules for 8 categories, regex detection of document type, unit code/name, semester, year, vendor, amount and dates; frequency-based keywords (acronyms boosted); extractive summary. Works offline. |
+| **OpenAI GPT** | `AI_PROVIDER=openai` | `OPENAI_API_KEY` | JSON-mode prompt with the user's existing folders; output validated and cleaned; falls back to the local analyser on failure |
+| **Hashing embeddings** (default) | `EMBEDDING_PROVIDER=local` | Nothing | 512-dimension signed feature hashing of words and word pairs — matches shared vocabulary |
+| **Sentence-Transformers** | `EMBEDDING_PROVIDER=sentence-transformers` | `pip install sentence-transformers` | True semantic vectors computed locally (`all-MiniLM-L6-v2`) |
+| **OpenAI embeddings** | `EMBEDDING_PROVIDER=openai` | `OPENAI_API_KEY` | True semantic vectors (`text-embedding-3-small`) |
+
+## 4.5 Search design
 
 ```mermaid
 flowchart LR
-    Q["User query"] --> E["Embed query"]
+    Q["User query"] --> E["Embed query<br/>(filler words like 'find my' removed)"]
     E --> S1["Cosine similarity vs the<br/>user's document embeddings"]
-    Q --> S2["MySQL FULLTEXT on<br/>title, summary, text + keyword match"]
-    S1 --> C["Combine scores<br/>e.g. 0.7 semantic + 0.3 keyword"]
+    Q --> S2["Keyword score: share of query words<br/>in title, keywords, folder, filename (full)<br/>or summary and text (half)"]
+    S1 --> C["Relevance = 0.6 semantic + 0.4 keyword"]
     S2 --> C
     C --> T["Top results with relevance %"]
 ```
 
-- Each document's embedding is built from its title, summary, keywords and the start of its text.
-- Similarity is computed in Python with NumPy. 10,000 documents × 384 dimensions is about 15 MB per user, which is fast enough for the 2 s target (NFR-01, NFR-05).
+- Each document's embedding is built from its title, keywords, category, subject, folder, filename, summary and the start of its text.
+- Each user's vectors and word sets are cached in memory (`services/index.py`) and rebuilt only when that user's documents change, so a search is one NumPy matrix multiplication. Measured: 20–60 ms with the demo library.
+- A result must share at least one word with the query, or be clearly similar in meaning, so unrelated documents are not returned.
 - Results are always filtered by `user_id` first (NFR-02 data privacy).
+- The keyword score is computed in Python rather than with MySQL `FULLTEXT`, so the same code runs on MySQL and on the SQLite test database.
 
 ## 4.6 Sequence diagrams
 
@@ -297,23 +309,24 @@ sequenceDiagram
 | Cryptographic failures | HTTPS everywhere; BCrypt (cost ≥ 12) for passwords; secrets only in `.env` |
 | Injection | SQLAlchemy ORM / parameterised queries only |
 | Insecure design | Upload type checked by content (magic bytes), not just extension; size limit enforced server-side |
-| Identification and authentication failures | Password rules (FR-01); generic login error message; JWT expiry; rate-limit login attempts **(proposed)** |
-| Security misconfiguration | S3 bucket is private; files only reachable through short-lived pre-signed URLs |
-| Logging and monitoring | `audit_logs` table for login, upload, download, delete |
+| Identification and authentication failures | Password rules (FR-01); same message for unknown email and wrong password; JWT expiry (30 min); login blocked for 5 minutes after 5 failed attempts |
+| Security misconfiguration | Files are only reachable through short-lived signed links (S3 pre-signed URLs, or signed `/api/files/<token>` links for local storage); `X-Content-Type-Options: nosniff` |
+| Logging and monitoring | `audit_logs` table for register, login (and failures), upload, approve, view, download, update, move, delete, search |
 
-**Privacy note:** if OpenAI is used, document text is sent to a third-party API. The app should say so in its privacy notice, and the team may prefer a local Hugging Face model for sensitive documents.
+**Privacy note:** if OpenAI is used, document text is sent to a third-party API. The Settings page says so, and the default local analyser keeps everything on the server.
 
-## 4.8 Decisions to confirm
+## 4.8 Technical decisions
 
-These were left open in the proposal. Agree them at the first NIT3004 team meeting and record the choice here.
+These were left open in the proposal. The values below are what the implementation uses; all are configurable.
 
-| # | Decision | Options | Suggested default |
+| # | Decision | Chosen | Why |
 |---|---|---|---|
-| D1 | Model for classification and metadata | OpenAI GPT (API) · Hugging Face model (local) | OpenAI for accuracy; keep the interface swappable (NFR-05) |
-| D2 | Embedding model | `all-MiniLM-L6-v2` (local, free, 384-dim) · OpenAI embeddings | `all-MiniLM-L6-v2` |
-| D3 | Background processing | Thread pool inside Flask · Celery + Redis | Thread pool first; Celery if time allows |
-| D4 | Where the browser keeps the JWT | httpOnly cookie · memory / localStorage | httpOnly cookie (safer against XSS) |
-| D5 | Maximum upload size | 10 MB · 20 MB · other | 20 MB (configurable via `MAX_UPLOAD_MB`) |
-| D6 | Session timeout | 15 · 30 · 60 min | 30 min |
-| D7 | Name fields | Single `name` (proposal DB) · first + last name (UI mock-up) | Single `name`; UI joins first + last |
-| D8 | Hosting for final demo | Local machine · AWS EC2 · other | Decide by Milestone 3 |
+| D1 | Model for classification and metadata | Built-in local analyser by default; OpenAI GPT optional (`AI_PROVIDER=openai`) | Works offline, free and private for the demo; GPT can be switched on for higher accuracy |
+| D2 | Embedding model | Local hashing embeddings by default; `all-MiniLM-L6-v2` or OpenAI optional | No large downloads needed; true semantic models are one setting away (`flask reindex` after switching) |
+| D3 | Background processing | Thread pool inside Flask (`PROCESSING_WORKERS=2`) with crash recovery | Simple to run and enough for 50 users; Celery + Redis would be the next step for production |
+| D4 | Where the browser keeps the JWT | `sessionStorage`, sent as `Authorization: Bearer` | Simple, cleared when the browser closes; tokens expire after 30 minutes |
+| D5 | Maximum upload size | 20 MB (`MAX_UPLOAD_MB`) + 1 GB quota per user (`STORAGE_QUOTA_MB`) | |
+| D6 | Session timeout | 30 min (`JWT_ACCESS_TOKEN_EXPIRES_MIN`) | |
+| D7 | Name fields | Single `name` column; the registration form joins first + last name | Matches the proposal's database design |
+| D8 | File storage | Local folder in development (`STORAGE_BACKEND=local`), AWS S3 in production (`STORAGE_BACKEND=s3`) | Lets the app run without AWS credentials |
+| D9 | Hosting for final demo | Local machine (Laragon MySQL) | Decide by Milestone 3 if a cloud deployment is required |

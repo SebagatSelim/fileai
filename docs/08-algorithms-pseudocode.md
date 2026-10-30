@@ -173,13 +173,13 @@ END PROCEDURE
 ```text
 PROCEDURE RankSearchResults
     INPUT QueryText, UserID
-    CONSTANT SemanticWeight = 0.7, KeywordWeight = 0.3, MaxResults = 20
+    CONSTANT SemanticWeight = 0.6, KeywordWeight = 0.4, MaxResults = 10
 
     QueryEmbedding = Embed(QueryText)
     FOR EACH Document of UserID with status STORED
         SemanticScore = CosineSimilarity(QueryEmbedding, Document.Embedding)
-        KeywordScore  = Normalised MySQL FULLTEXT score for QueryText
-                        (title, summary, extracted text, keywords)
+        KeywordScore  = share of query words found in the document
+                        (title, keywords, folder, filename count 1; summary and text count 0.5)
         Document.Relevance = SemanticWeight × SemanticScore + KeywordWeight × KeywordScore
     ENDFOR
 
